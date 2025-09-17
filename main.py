@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Virtual Advisory Board - Railway Deployment
+Virtual Advisory Board - Render Deployment
 Simple HTTP wrapper for MCP-style advisory board
 """
 
