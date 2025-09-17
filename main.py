@@ -1,21 +1,7 @@
-#!/usr/bin/env python3
-"""
-Virtual Advisory Board - Render Deployment
-Simple HTTP wrapper for MCP-style advisory board
-"""
+from flask import Flask, request, jsonify
+import json
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Optional
-import uvicorn
-import os
-
-app = FastAPI(title="Virtual Advisory Board", version="1.0.0")
-
-# Request models
-class ToolRequest(BaseModel):
-    tool: str
-    arguments: dict = {}
+app = Flask(__name__)
 
 # Advisory Board Members Database
 ADVISORS = {
@@ -51,12 +37,11 @@ ADVISORS = {
     }
 }
 
-@app.get("/")
-async def root():
-    """Server information endpoint"""
-    return {
+@app.route('/')
+def home():
+    return jsonify({
         "name": "Virtual Advisory Board",
-        "version": "1.0.0", 
+        "version": "1.0.0",
         "description": "Consult with virtual versions of famous business leaders",
         "tools": [
             {"name": "list_advisors", "description": "Get list of advisory board members"},
@@ -64,38 +49,40 @@ async def root():
             {"name": "board_meeting", "description": "Hold virtual board meeting"},
             {"name": "advisor_philosophy", "description": "Learn advisor's background"}
         ]
-    }
+    })
 
-@app.post("/tools")
-async def execute_tool(request: ToolRequest):
-    """Execute advisory board tools"""
+@app.route('/tools', methods=['POST'])
+def execute_tool():
     try:
-        if request.tool == "list_advisors":
-            return {"result": list_advisors()}
+        data = request.get_json()
+        tool = data.get('tool')
+        arguments = data.get('arguments', {})
         
-        elif request.tool == "consult_advisor":
-            advisor_name = request.arguments.get("advisor_name", "")
-            situation = request.arguments.get("situation", "")
-            context = request.arguments.get("context", "")
-            return {"result": consult_advisor(advisor_name, situation, context)}
+        if tool == "list_advisors":
+            return jsonify({"result": list_advisors()})
         
-        elif request.tool == "board_meeting":
-            topic = request.arguments.get("topic", "")
-            background_info = request.arguments.get("background_info", "")
-            return {"result": board_meeting(topic, background_info)}
+        elif tool == "consult_advisor":
+            advisor_name = arguments.get("advisor_name", "")
+            situation = arguments.get("situation", "")
+            context = arguments.get("context", "")
+            return jsonify({"result": consult_advisor(advisor_name, situation, context)})
         
-        elif request.tool == "advisor_philosophy":
-            advisor_name = request.arguments.get("advisor_name", "")
-            return {"result": advisor_philosophy(advisor_name)}
+        elif tool == "board_meeting":
+            topic = arguments.get("topic", "")
+            background_info = arguments.get("background_info", "")
+            return jsonify({"result": board_meeting(topic, background_info)})
+        
+        elif tool == "advisor_philosophy":
+            advisor_name = arguments.get("advisor_name", "")
+            return jsonify({"result": advisor_philosophy(advisor_name)})
         
         else:
-            raise HTTPException(status_code=400, detail=f"Unknown tool: {request.tool}")
+            return jsonify({"error": f"Unknown tool: {tool}"}), 400
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return jsonify({"error": str(e)}), 500
 
 def list_advisors():
-    """Get list of all advisory board members"""
     advisor_list = []
     for advisor_id, advisor in ADVISORS.items():
         advisor_list.append(f"• {advisor['name']} - {advisor['role']}")
@@ -106,9 +93,7 @@ def list_advisors():
 
 Use 'consult_advisor' to get specific advice from any board member."""
 
-def consult_advisor(advisor_name: str, situation: str, context: str = ""):
-    """Consult with a specific advisory board member"""
-    
+def consult_advisor(advisor_name, situation, context=""):
     # Find the advisor
     advisor_key = None
     for key, advisor in ADVISORS.items():
@@ -162,9 +147,7 @@ Be wary of decisions driven by short-term pressures rather than sound strategic 
     
     return response
 
-def board_meeting(topic: str, background_info: str = ""):
-    """Hold a virtual board meeting"""
-    
+def board_meeting(topic, background_info=""):
     return f"""📋 **Virtual Advisory Board Meeting**
 
 **Topic:** {topic}
@@ -198,9 +181,7 @@ def board_meeting(topic: str, background_info: str = ""):
 **Recommended Next Steps:**
 Return with specific implementation details for deeper analysis, or consult individual advisors for specialized expertise."""
 
-def advisor_philosophy(advisor_name: str):
-    """Get detailed philosophy of a specific advisor"""
-    
+def advisor_philosophy(advisor_name):
     # Find the advisor
     advisor_key = None
     for key, advisor in ADVISORS.items():
@@ -231,6 +212,5 @@ def advisor_philosophy(advisor_name: str):
 
 Use 'consult_advisor' to get specific advice from {advisor['name']} on your business situations."""
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080)
